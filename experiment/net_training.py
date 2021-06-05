@@ -4,8 +4,8 @@ import torch.nn.functional as F
 import torch.optim as optim
 import datetime
 
-class EarlyStopping:
-    def __init__(self, patience=10, min_delta=0.01):
+class EarlyStoppingByLoss:
+    def __init__(self, patience=10, min_delta=0):
         self.previous_loss = None
         self.epochs_no_improvement = 0
         self.patience = patience
@@ -23,6 +23,26 @@ class EarlyStopping:
     
     def is_improvement(self, loss):
         return self.previous_loss == None or loss < self.previous_loss - self.min_delta
+
+class EarlyStoppingByAccuracy:
+    def __init__(self, patience=10, min_delta=0):
+        self.previous_accuracy = None
+        self.epochs_no_improvement = 0
+        self.patience = patience
+        self.min_delta = min_delta
+    
+    def report_accuracy(self, accuracy):
+        if self.is_improvement(accuracy):
+            self.epochs_no_improvement = 0
+            self.previous_accuracy = accuracy
+        else:
+            self.epochs_no_improvement += 1
+
+    def should_stop(self):
+        return self.epochs_no_improvement >= self.patience
+    
+    def is_improvement(self, accuracy):
+        return self.previous_accuracy == None or accuracy > self.previous_accuracy + self.min_delta
     
 
 def train(net, train_dataloader, criterion, optimizer, device="cpu"):
@@ -103,7 +123,10 @@ def train_and_evaluate(net, train_dataloader, test_dataloader, label_set, epochs
     criterion = nn.CrossEntropyLoss()
     optimizer  = optim.Adam(net.parameters()) if optimizer == None else optimizer
     all_epoch_results = []
+    early_stopping = EarlyStoppingByAccuracy()
     for epoch in range(epochs):
+        if early_stopping.should_stop():
+            break
         start_time = datetime.datetime.now()
         train_results = train(net, train_dataloader, criterion, optimizer, device=device)
         results = evaluate(net, test_dataloader, label_set, criterion, device=device)
@@ -111,6 +134,7 @@ def train_and_evaluate(net, train_dataloader, test_dataloader, label_set, epochs
         train_loss = train_results["loss"]
         val_loss = results["loss"]
         accuracy = results["accuracy"]
+        early_stopping.report_accuracy(accuracy)
         epoch_results = {"epoch":epoch, "train_loss":train_loss, "val_loss":val_loss, "val_accuracy":accuracy,
                           "elapsed_time":time_elapsed}
         all_epoch_results += epoch_results
