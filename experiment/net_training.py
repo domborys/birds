@@ -123,7 +123,7 @@ def train_and_evaluate(net, train_dataloader, test_dataloader, label_set, epochs
     criterion = nn.CrossEntropyLoss()
     optimizer  = optim.Adam(net.parameters()) if optimizer == None else optimizer
     all_epoch_results = []
-    early_stopping = EarlyStoppingByAccuracy()
+    early_stopping = EarlyStoppingByAccuracy(patience = 20)
     for epoch in range(epochs):
         if early_stopping.should_stop():
             break
