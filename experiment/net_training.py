@@ -11,7 +11,7 @@ class EarlyStoppingByLoss:
         self.patience = patience
         self.min_delta = min_delta
     
-    def report_loss(self, loss):
+    def report(self, loss):
         if self.is_improvement(loss):
             self.epochs_no_improvement = 0
             self.previous_loss = loss
@@ -31,7 +31,7 @@ class EarlyStoppingByAccuracy:
         self.patience = patience
         self.min_delta = min_delta
     
-    def report_accuracy(self, accuracy):
+    def report(self, accuracy):
         if self.is_improvement(accuracy):
             self.epochs_no_improvement = 0
             self.previous_accuracy = accuracy
@@ -117,13 +117,15 @@ def print_label_accuracy(correct_labels, total_labels):
             accuracy = correct_label / total_label
             print("\t{}: {:.2f}%".format(label_str, 100*accuracy))
 
-def train_and_evaluate(net, train_dataloader, test_dataloader, label_set, epochs=30, optimizer=None, print_results=False):
+def train_and_evaluate(net, train_dataloader, test_dataloader, label_set, epochs=30,
+                       optimizer=None, early_stopping=None, print_results=False):
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     net.to(device)
     criterion = nn.CrossEntropyLoss()
     optimizer  = optim.Adam(net.parameters()) if optimizer == None else optimizer
     all_epoch_results = []
-    early_stopping = EarlyStoppingByAccuracy(patience = 20)
+    if early_stopping == None:
+        early_stopping = EarlyStoppingByAccuracy(patience = 20)
     for epoch in range(epochs):
         if early_stopping.should_stop():
             break
@@ -134,7 +136,7 @@ def train_and_evaluate(net, train_dataloader, test_dataloader, label_set, epochs
         train_loss = train_results["loss"]
         val_loss = results["loss"]
         accuracy = results["accuracy"]
-        early_stopping.report_accuracy(accuracy)
+        early_stopping.report(accuracy)
         epoch_results = {"epoch":epoch, "train_loss":train_loss, "val_loss":val_loss, "val_accuracy":accuracy,
                           "elapsed_time":time_elapsed}
         all_epoch_results += epoch_results
