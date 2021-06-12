@@ -59,6 +59,22 @@ def train(net, train_dataloader, criterion, optimizer, device="cpu"):
     epoch_loss = running_loss / len(train_dataloader.dataset)
     return {"loss":epoch_loss}
 
+def train_inception(net, train_dataloader, criterion, optimizer, device="cpu"):
+    net.train()
+    running_loss = 0
+    for i, data in enumerate(train_dataloader, 0):
+        inputs, labels = data[0].to(device), data[1].to(device)
+        optimizer.zero_grad()
+        outputs, aux_outputs = net(inputs)
+        loss1 = criterion(outputs, labels)
+        loss2 = criterion(aux_outputs, labels)
+        loss = loss1 + 0.4*loss2
+        running_loss += loss.item() * inputs.size(0)
+        loss.backward()
+        optimizer.step()
+    epoch_loss = running_loss / len(train_dataloader.dataset)
+    return {"loss":epoch_loss}
+
 def evaluate(net, test_dataloader, label_set, criterion, device="cpu"):
     net.eval()
     correct = 0
@@ -118,8 +134,9 @@ def print_label_accuracy(correct_labels, total_labels):
             print("\t{}: {:.2f}%".format(label_str, 100*accuracy))
 
 def train_and_evaluate(net, train_dataloader, test_dataloader, label_set, epochs=30,
-                       optimizer=None, early_stopping=None, print_results=False):
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+                       optimizer=None, early_stopping=None, print_results=False, is_inception=False, device=None):
+    if device == None:
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     net.to(device)
     criterion = nn.CrossEntropyLoss()
     optimizer  = optim.Adam(net.parameters()) if optimizer == None else optimizer
@@ -130,7 +147,10 @@ def train_and_evaluate(net, train_dataloader, test_dataloader, label_set, epochs
         if early_stopping.should_stop():
             break
         start_time = datetime.datetime.now()
-        train_results = train(net, train_dataloader, criterion, optimizer, device=device)
+        if is_inception:
+            train_results = train_inception(net, train_dataloader, criterion, optimizer, device=device)
+        else:
+            train_results = train(net, train_dataloader, criterion, optimizer, device=device)
         results = evaluate(net, test_dataloader, label_set, criterion, device=device)
         time_elapsed = datetime.datetime.now() - start_time
         train_loss = train_results["loss"]
