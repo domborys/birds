@@ -136,7 +136,7 @@ def print_label_accuracy(correct_labels, total_labels):
 def train_and_evaluate(net, train_dataloader, test_dataloader, label_set, epochs=30,
                        optimizer=None, early_stopping=None, print_results=False, is_inception=False, device=None):
     if device == None:
-        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        device = torch.device("cpu")
     net.to(device)
     criterion = nn.CrossEntropyLoss()
     optimizer  = optim.Adam(net.parameters()) if optimizer == None else optimizer
